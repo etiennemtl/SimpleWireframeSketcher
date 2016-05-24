@@ -397,6 +397,26 @@ class DrawingCanvas implements MultitouchReceiver {
 			if ( stylusMode == STYLUS_MODE_INKING || stylusMode == STYLUS_MODE_INKING_SYMMETRICAL ) {
 				gw.setColor(0,0,0);
 				gw.drawPolyline( inputCursor.getHistoryOfPositions() );
+
+                // Find the plane on which to project the stroke
+                Vector3D normalToWorkingPlane = new Vector3D(0,0,0);
+                normalToWorkingPlane.v[dimension] = backwardVector.v[dimension];
+                normalToWorkingPlane = normalToWorkingPlane.normalized();
+                Plane plane = new Plane( normalToWorkingPlane, workingOrigin );
+
+
+                if ( stylusMode == STYLUS_MODE_INKING_SYMMETRICAL ) {
+                    Stroke newTrail = new Stroke();
+                    for ( Point2D p : inputCursor.getHistoryOfPositions() ) {
+                        Ray3D ray = camera.computeRay( p.x(), p.y() );
+                        Point3D intersection = new Point3D();
+                        if ( plane.intersects( ray, intersection, true ) ) {
+                            newTrail.addPoint( new Point3D( - intersection.x(), intersection.y(), intersection.z() ) );
+                        }
+                    }
+
+                    gw.drawPolyline(newTrail.getPoints2D(camera));
+                }
 			}
 			else if ( stylusMode == STYLUS_MODE_LASSO ) {
 
