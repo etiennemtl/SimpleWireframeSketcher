@@ -2,10 +2,11 @@
 package android.mcguffin.simplewireframesketcher;
 
 
+import android.graphics.Paint;
+import android.graphics.Path;
+
 import java.util.ArrayList;
-
-
-
+import java.util.List;
 
 
 // This stores a polygonal line, creating by a stroke of the user's finger or pen.
@@ -108,6 +109,7 @@ class DrawingCanvas implements MultitouchReceiver {
 	public static final int STYLUS_MODE_INKING = 0;
 	public static final int STYLUS_MODE_INKING_SYMMETRICAL = 1;
 	public static final int STYLUS_MODE_LASSO = 2;
+    public static final int STYLUS_MODE_ERASE = 3;
 	private int stylusMode = STYLUS_MODE_INKING;
 
 	public DrawingCanvas( Drawing d, GraphicsWrapper gw ) {
@@ -173,6 +175,7 @@ class DrawingCanvas implements MultitouchReceiver {
 			switch ( stylusMode ) {
 			case STYLUS_MODE_INKING :
 			case STYLUS_MODE_INKING_SYMMETRICAL :
+            case STYLUS_MODE_ERASE:
 
 				switch ( cursor.getDistanceStateEventType() ) {
 				case MultitouchCursor.EVENT_OUT_OF_RANGE_TO_TOUCHING :
@@ -211,13 +214,28 @@ class DrawingCanvas implements MultitouchReceiver {
 								newStroke2.addPoint( new Point3D( - intersection.x(), intersection.y(), intersection.z() ) );
 						}
 					}
-					newStroke.setColor( currentColor_r, currentColor_g, currentColor_b );
-					drawing.addStroke( newStroke );
-					if ( stylusMode == STYLUS_MODE_INKING_SYMMETRICAL ) {
-						newStroke2.setColor( currentColor_r, currentColor_g, currentColor_b );
-						drawing.addStroke( newStroke2 );
-					}
+                    if (stylusMode == STYLUS_MODE_ERASE) {
+                        Path erasePath = gw.getPathFromStroke(newStroke, camera);
+                        List<Stroke> strokeToRemove = new ArrayList<Stroke>();
+                        Path path;
 
+                        for (Stroke stroke: drawing.strokes) {
+                            path = gw.getPathFromStroke(stroke, camera);
+                            if (gw.isIntersect(erasePath, path)) {
+                                strokeToRemove.add(stroke);
+                            }
+                        }
+
+                        drawing.strokes.removeAll(strokeToRemove);
+
+                    } else {
+                        newStroke.setColor(currentColor_r, currentColor_g, currentColor_b);
+                        drawing.addStroke(newStroke);
+                        if (stylusMode == STYLUS_MODE_INKING_SYMMETRICAL) {
+                            newStroke2.setColor(currentColor_r, currentColor_g, currentColor_b);
+                            drawing.addStroke(newStroke2);
+                        }
+                    }
 					inputCursor = null;
 					break;
 				}
@@ -595,7 +613,8 @@ class Toolbar implements MultitouchDispatcher, MultitouchReceiver {
 	private static final int BM_BLUE_INK = 9;    // radio button group C
 	private static final int BM_PURPLE_INK = 10; // radio button group C
 	private static final int BM_GREY_INK = 11;   // radio button group C
-	private static final int NUM_BITMAPS = 12;
+	private static final int BM_ERASE = 12;
+	private static final int NUM_BITMAPS = 13;
 
 	// These indices will be used to index into an array,
 	// and thus should start at zero.
@@ -611,7 +630,8 @@ class Toolbar implements MultitouchDispatcher, MultitouchReceiver {
 	private static final int TB_BLUE_INK = 8;   // radio button group C
 	private static final int TB_PURPLE_INK = 9; // radio button group C
 	private static final int TB_GREY_INK = 10;  // radio button group C
-	private static final int NUM_TOOLBAR_BUTTONS = 11;
+	private static final int TB_ERASE = 11;  // radio button group C
+	private static final int NUM_TOOLBAR_BUTTONS = 12;
 
 	public MultitouchFramework mf = null;
 	DrawingCanvas drawingCanvas = null;
@@ -639,6 +659,7 @@ class Toolbar implements MultitouchDispatcher, MultitouchReceiver {
 		mf.loadBitmap( BM_BLUE_INK,                       R.drawable.color_0080ff );
 		mf.loadBitmap( BM_PURPLE_INK,                     R.drawable.color_ff00ff );
 		mf.loadBitmap( BM_GREY_INK,                       R.drawable.color_808080 );
+		mf.loadBitmap( BM_ERASE,					  R.drawable.eraser);
 
 		buttons = new ToolbarButton[ NUM_TOOLBAR_BUTTONS ];
 		int index = 0;
@@ -671,6 +692,8 @@ class Toolbar implements MultitouchDispatcher, MultitouchReceiver {
 			BM_PURPLE_INK,-1,-1); x0 += iconSize;
 		buttons[index++] = new ToolbarButton(mf,this,x0,0,iconSize,iconSize,"Grey Ink",
 			BM_GREY_INK,-1,-1); x0 += iconSize;
+		buttons[index++] = new ToolbarButton(mf,this,x0,0,iconSize,iconSize,"Serialize",
+                BM_ERASE,-1,-1); x0 += iconSize;
 
 		MultitouchFramework.Assert( index == NUM_TOOLBAR_BUTTONS, "e4ef8900" );
 		for ( int i = 0; i < NUM_TOOLBAR_BUTTONS; ++i ) {
@@ -692,6 +715,9 @@ class Toolbar implements MultitouchDispatcher, MultitouchReceiver {
 			case TB_INKING_SYMMETRICAL_TOOL :
 				drawingCanvas.setStylusMode( DrawingCanvas.STYLUS_MODE_INKING_SYMMETRICAL );
 				break;
+            case TB_ERASE:
+                drawingCanvas.setStylusMode( DrawingCanvas.STYLUS_MODE_ERASE);
+                break;
 			default:
 				MultitouchFramework.Assert( false, "2dba096b" );
 		}
@@ -807,6 +833,9 @@ class Toolbar implements MultitouchDispatcher, MultitouchReceiver {
 			if ( stylusMode_toolbarButton!=TB_INKING_TOOL && stylusMode_toolbarButton!=TB_INKING_SYMMETRICAL_TOOL )
 				setStylusMode( TB_INKING_TOOL );
 		}
+        else if ( button == buttons[ TB_ERASE ] ) {
+            setStylusMode(TB_ERASE);
+        }
 
 		else {
 			// we should never get here

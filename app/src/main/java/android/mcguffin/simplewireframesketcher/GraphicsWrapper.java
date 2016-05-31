@@ -3,16 +3,12 @@ package android.mcguffin.simplewireframesketcher;
 
 
 
-import android.graphics.Paint;
+import android.graphics.*;
 //import android.graphics.Paint.Style;
-import android.graphics.Canvas;
-import android.graphics.Path;
-import android.graphics.Matrix;
-import android.graphics.Rect;
-import android.graphics.Bitmap;
 
 import java.lang.Math;
 import java.util.ArrayList;
+import java.util.List;
 //import java.awt.Color;
 
 
@@ -394,7 +390,29 @@ class GraphicsWrapper {
 
 	public void drawBitmap( Bitmap bitmap, float left, float top ) {
 		canvas.drawBitmap( bitmap, left, top, paint);
+
 	}
+
+	public Path getPathFromStroke(Stroke s, Camera3D camera) {
+		if ( s.getPoints2D(camera).size() <= 1 )
+			return null;
+
+		Path path = new Path();
+		Point2D p = s.getPoints2D(camera).get(0);
+		path.moveTo( p.x(), p.y() );
+		for ( int i = 1; i < s.getPoints2D(camera).size(); ++i ) {
+			p = s.getPoints2D(camera).get(i);
+			path.lineTo( p.x(), p.y() );
+		}
+		path.close();
+
+		return path;
+	}
+
+	public boolean isIntersect(Path p1, Path p2) {
+		boolean intersect = p2.op(p1, Path.Op.INTERSECT);
+        return !p2.isEmpty();
+    }
 
 }
 
