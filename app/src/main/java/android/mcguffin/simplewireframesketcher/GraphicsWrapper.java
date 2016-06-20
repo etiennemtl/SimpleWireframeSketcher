@@ -409,9 +409,21 @@ class GraphicsWrapper {
 		return path;
 	}
 
+    /**
+     * Le code a ete trouver a l'adresse suivante http://stackoverflow.com/questions/11184397/path-intersection-in-android
+     * @param p1
+     * @param p2
+     * @return
+     */
 	public boolean isIntersect(Path p1, Path p2) {
-		boolean intersect = p2.op(p1, Path.Op.INTERSECT);
-        return !p2.isEmpty();
+        Region clip = new Region(0, 0, canvas.getWidth(), canvas.getHeight());
+
+        Region region1 = new Region();
+        region1.setPath(p1, clip);
+        Region region2 = new Region();
+        region2.setPath(p2, clip);
+
+        return !region1.quickReject(region2) && region1.op(region2, Region.Op.INTERSECT);
     }
 
 }

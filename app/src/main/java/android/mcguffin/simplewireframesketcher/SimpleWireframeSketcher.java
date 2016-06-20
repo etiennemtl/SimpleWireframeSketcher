@@ -6,6 +6,8 @@ import android.graphics.Paint;
 import android.graphics.Path;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 
@@ -100,6 +102,7 @@ class DrawingCanvas implements MultitouchReceiver {
 	Point3D workingOrigin = new Point3D(0,0,0);
 	private MultitouchDispatcher parentDispatcher = null;
 	public ArrayList< Stroke > selectedStrokes = new ArrayList< Stroke >();
+    public ActionMemento memento = new ActionMemento();
 
 	float currentColor_r = 0, currentColor_g = 0, currentColor_b = 0;
 
@@ -219,21 +222,35 @@ class DrawingCanvas implements MultitouchReceiver {
                         List<Stroke> strokeToRemove = new ArrayList<Stroke>();
                         Path path;
 
+                        HashMap<Integer, Stroke> map = new HashMap<Integer, Stroke>();
+
                         for (Stroke stroke: drawing.strokes) {
                             path = gw.getPathFromStroke(stroke, camera);
                             if (gw.isIntersect(erasePath, path)) {
                                 strokeToRemove.add(stroke);
+                                map.put(drawing.strokes.indexOf(stroke), stroke);
                             }
                         }
 
                         drawing.strokes.removeAll(strokeToRemove);
-
+                        memento.addAction(new Command(CommandType.ERASE, map));
                     } else {
                         newStroke.setColor(currentColor_r, currentColor_g, currentColor_b);
                         drawing.addStroke(newStroke);
                         if (stylusMode == STYLUS_MODE_INKING_SYMMETRICAL) {
                             newStroke2.setColor(currentColor_r, currentColor_g, currentColor_b);
                             drawing.addStroke(newStroke2);
+
+                            HashMap<Integer, Stroke> map = new HashMap<Integer, Stroke>(2);
+                            map.put(drawing.strokes.size() - 2, newStroke);
+                            map.put(drawing.strokes.size() - 1, newStroke2);
+
+                            memento.addAction(new Command(CommandType.DRAW, map));
+                        } else {
+                            HashMap<Integer, Stroke> map = new HashMap<Integer, Stroke>(1);
+                            map.put(drawing.strokes.size() - 1, newStroke);
+
+                            memento.addAction(new Command(CommandType.DRAW, map));
                         }
                     }
 					inputCursor = null;
@@ -341,6 +358,10 @@ class DrawingCanvas implements MultitouchReceiver {
 		selectedStrokes.clear();
 
 	}
+
+    public void undo() {
+        memento.undo(drawing.strokes);
+    }
 
 	public void draw( GraphicsWrapper gw, Camera3D camera ) {
 		this.gw = gw;
@@ -614,7 +635,8 @@ class Toolbar implements MultitouchDispatcher, MultitouchReceiver {
 	private static final int BM_PURPLE_INK = 10; // radio button group C
 	private static final int BM_GREY_INK = 11;   // radio button group C
 	private static final int BM_ERASE = 12;
-	private static final int NUM_BITMAPS = 13;
+	private static final int BM_UNDO = 13;
+	private static final int NUM_BITMAPS = 14;
 
 	// These indices will be used to index into an array,
 	// and thus should start at zero.
@@ -631,7 +653,8 @@ class Toolbar implements MultitouchDispatcher, MultitouchReceiver {
 	private static final int TB_PURPLE_INK = 9; // radio button group C
 	private static final int TB_GREY_INK = 10;  // radio button group C
 	private static final int TB_ERASE = 11;  // radio button group C
-	private static final int NUM_TOOLBAR_BUTTONS = 12;
+	private static final int TB_UNDO = 12;
+	private static final int NUM_TOOLBAR_BUTTONS = 13;
 
 	public MultitouchFramework mf = null;
 	DrawingCanvas drawingCanvas = null;
@@ -659,7 +682,8 @@ class Toolbar implements MultitouchDispatcher, MultitouchReceiver {
 		mf.loadBitmap( BM_BLUE_INK,                       R.drawable.color_0080ff );
 		mf.loadBitmap( BM_PURPLE_INK,                     R.drawable.color_ff00ff );
 		mf.loadBitmap( BM_GREY_INK,                       R.drawable.color_808080 );
-		mf.loadBitmap( BM_ERASE,					  R.drawable.eraser);
+		mf.loadBitmap( BM_ERASE,					  	  R.drawable.eraser);
+		mf.loadBitmap( BM_UNDO,					  	      R.drawable.delete);
 
 		buttons = new ToolbarButton[ NUM_TOOLBAR_BUTTONS ];
 		int index = 0;
@@ -692,16 +716,16 @@ class Toolbar implements MultitouchDispatcher, MultitouchReceiver {
 			BM_PURPLE_INK,-1,-1); x0 += iconSize;
 		buttons[index++] = new ToolbarButton(mf,this,x0,0,iconSize,iconSize,"Grey Ink",
 			BM_GREY_INK,-1,-1); x0 += iconSize;
-		buttons[index++] = new ToolbarButton(mf,this,x0,0,iconSize,iconSize,"Serialize",
+		buttons[index++] = new ToolbarButton(mf,this,x0,0,iconSize,iconSize,"Erase",
                 BM_ERASE,-1,-1); x0 += iconSize;
+        buttons[index++] = new ToolbarButton(mf,this,x0,0,iconSize,iconSize,"Undo",
+                BM_UNDO,-1,-1); x0 += iconSize;
 
 		MultitouchFramework.Assert( index == NUM_TOOLBAR_BUTTONS, "e4ef8900" );
 		for ( int i = 0; i < NUM_TOOLBAR_BUTTONS; ++i ) {
 			dispatcherImplementation.addReceiver( buttons[i] );
 		}
 	}
-
-
 
 	private void setStylusMode( int toolbarButton ) {
 		stylusMode_toolbarButton = toolbarButton;
@@ -835,6 +859,9 @@ class Toolbar implements MultitouchDispatcher, MultitouchReceiver {
 		}
         else if ( button == buttons[ TB_ERASE ] ) {
             setStylusMode(TB_ERASE);
+        }
+        else if ( button == buttons[ TB_UNDO] ) {
+            drawingCanvas.undo();
         }
 
 		else {
