@@ -303,6 +303,7 @@ class DrawingCanvas implements MultitouchReceiver {
 							ArrayList< Point2D > points2D = s.getPoints2D( camera );
 							for ( int i = 0; i < points2D.size(); ++i ) {
 								if ( selectedRectangle.contains( points2D.get(i) ) ) {
+
 									workingOrigin.copy( points3D.get(i) );
 									done = true;
 									break;
@@ -683,7 +684,7 @@ class Toolbar implements MultitouchDispatcher, MultitouchReceiver {
 		mf.loadBitmap( BM_PURPLE_INK,                     R.drawable.color_ff00ff );
 		mf.loadBitmap( BM_GREY_INK,                       R.drawable.color_808080 );
 		mf.loadBitmap( BM_ERASE,					  	  R.drawable.eraser);
-		mf.loadBitmap( BM_UNDO,					  	      R.drawable.delete);
+		mf.loadBitmap( BM_UNDO,					  	      R.drawable.undo_ina);
 
 		buttons = new ToolbarButton[ NUM_TOOLBAR_BUTTONS ];
 		int index = 0;
